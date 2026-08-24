@@ -23,6 +23,9 @@ Description:
 // +--------------------------------------------------------------+
 // |                        Build Options                         |
 // +--------------------------------------------------------------+
+#define DEBUG_BUILD           1
+
+
 #define BUILD_FOR_DEVICE      1
 #define BUILD_FOR_SIMULATOR   0
 
@@ -48,36 +51,18 @@ Description:
 // +===============================+
 // | Optional Libraries/Frameworks |
 // +===============================+
-// Enables tests.exe being linked with raylib.lib and it's required libraries
-#define BUILD_WITH_RAYLIB    0
-// Enables tests.exe being linked with box2d.lib and it's required libraries
-#define BUILD_WITH_BOX2D     0
 // Enables pig_core.dll and tests.exe using sokol_gfx.h (and on non-windows OS' adds required libraries for Sokol to work)
 #define BUILD_WITH_SOKOL_GFX 1
 // Enables tests.exe using sokol_app.h to create and manage a graphical window
 #define BUILD_WITH_SOKOL_APP 1
-// Enables tests.exe being linked with SDL.lib and it's required libraries
-#define BUILD_WITH_SDL       0
-// Enables tests.exe being linked with openvr_api.lib and it's required libraries
-#define BUILD_WITH_OPENVR    0
 // Enables tests.exe using clay.h to render UI elements
 #define BUILD_WITH_CLAY      1
 // Enables tests.exe using our own Immediate Mode style UI system
 #define BUILD_WITH_PIG_UI    0
 // Enables tests.exe and pig_core.dll being linked with imgui.obj
 #define BUILD_WITH_IMGUI     0
-// Enables tests.exe and pig_core.dll being linked with phsyx_capi.obj and PhysX_static_64.lib
-#define BUILD_WITH_PHYSX     0
-// Enables using Metadesk library to parse Metadesk formatted files (md.h and md.c)
-#define BUILD_WITH_METADESK  0
-// Enables support for making HTTP (and HTTPS) requests using the OS' API (WinHTTP for Windows, ? for Linux, etc.)
-#define BUILD_WITH_HTTP      0
-// Enables support for encoding/decoding Googles's protocol buffers using protobuf-c library
-#define BUILD_WITH_PROTOBUF  0
 // Enables building with the FreeType library which provides better font rasterizing support than stb_truetype.h (the default dependency)
 #define BUILD_WITH_FREETYPE  0
-// Enables linking with libgtk-4.so on Linux and enables some GTK-specific features on Linux (like OsDoOpenFileDialog)
-#define BUILD_WITH_GTK       0
 
 //This should stay enabled, it makes the ui_system_core.h file #include "pig_ui_config.h"
 #define PIG_CORE_INCLUDE_PIG_UI_CONFIG 1
@@ -124,5 +109,33 @@ Description:
 #define ANDROID_BUILD_TOOLS_VERSION_STR STRINGIFY_DEFINE(ANDROID_BUILD_TOOLS_VERSION)
 #define ANDROID_PACKAGE_PATH_STR        STRINGIFY_DEFINE(ANDROID_PACKAGE_PATH)
 #define ANDROID_ACTIVITY_PATH_STR       STRINGIFY_DEFINE(ANDROID_ACTIVITY_PATH)
+
+
+//Required by pig_build_pig_core_gui_app.h
+#define BUILD_INTO_SINGLE_UNIT       1
+#define BUILD_THIS_PLATFORM          0
+#define BUILD_LINUX_VIA_WSL          0
+#define BUILD_PIGGEN                 0
+#define RUN_PIGGEN                   0
+#define GENERATE_PROTOBUF            0
+#define BUILD_TRACY_DLL              0
+#define BUILD_PIG_CORE_DLL           0
+#define BUILD_APP_EXE                0
+#define BUILD_APP_DLL                0
+#define PROFILING_ENABLED            0
+#define USE_OSX_APP_BUNDLE_RESOURCES 0
+#define RUN_APP                      0
+#define COPY_TO_DATA_DIRECTORY       0
+#define BUILD_WITH_RAYLIB            0
+#define BUILD_WITH_BOX2D             0
+#define BUILD_WITH_SDL               0
+#define BUILD_WITH_OPENVR            0
+#define BUILD_WITH_PHYSX             0
+#define BUILD_WITH_METADESK          0
+#define BUILD_WITH_HTTP              0
+#define BUILD_WITH_PROTOBUF          0
+#define BUILD_WITH_GTK               0
+#define PROJECT_DLL_NAME       GpsTracerApp
+#define PROJECT_EXE_NAME       GpsTracer
 
 #endif //  _BUILD_CONFIG_H

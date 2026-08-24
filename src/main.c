@@ -7,6 +7,12 @@ Description:
 */
 
 #include <stdio.h>
+#include "base/base_all.h"
+
+#include "app_resources_zip.h"
+#if USE_EMBEDDED_RESOURCES_ZIP
+#include "app_resources_zip.c"
+#endif
 
 int main(int argc, char* argv[])
 {

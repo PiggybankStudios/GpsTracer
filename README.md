@@ -1,3 +1,3 @@
 # GPS Tracer
 
-A small Android app that can take GPS traces and save them to local storage (or export to another app). This project is based on [PigCore](https://github.com/PiggybankStudios/PigCore) and most of the logic lives in C compiled to native binaries with the [NDK](https://developer.android.com/ndk). The build script uses [PigBuild](https://github.com/PiggybankStudios/PigBuild) to compile, package, and sign the .apk
+A small Android app that can take GPS traces and save them to local storage (or export to another app). This project is based on [PigCore](https://github.com/PiggybankStudios/PigCore) and most of the logic lives in C, compiled to native binaries with the [NDK](https://developer.android.com/ndk). The build script uses [PigBuild](https://github.com/PiggybankStudios/PigBuild) to compile, package, and sign the .apk
