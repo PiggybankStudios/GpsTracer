@@ -1,0 +1,4 @@
+build/
+core/
+*.sublime-workspace
+.DS_Store

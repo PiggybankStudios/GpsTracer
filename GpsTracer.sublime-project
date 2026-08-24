@@ -1,0 +1,25 @@
+{
+	"folders":
+	[
+		{
+			"path": ".",
+		},
+		{
+			"name": "PigCore",
+			"path": "core/src",
+			"folder_exclude_patterns": [
+				"wasm",
+				"tests",
+			],
+			"file_exclude_patterns": [
+				"emscripten_*",
+				"pig_ui_config.h",
+				"shader_include.h",
+			],
+		},
+		{
+			"name": "PigBuild",
+			"path": "../pig_build/src"
+		},
+	],
+}
