@@ -66,6 +66,8 @@ Description:
 
 //This should stay enabled, it makes the ui_system_core.h file #include "pig_ui_config.h"
 #define PIG_CORE_INCLUDE_PIG_UI_CONFIG 1
+// We don't need the debug output callback in base_debug_output_impl.h
+#define DEBUG_OUTPUT_CALLBACK_GLOBAL 0
 
 // +--------------------------------------------------------------+
 // |                       Android Related                        |

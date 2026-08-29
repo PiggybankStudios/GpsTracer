@@ -132,7 +132,8 @@ int main(int argc, char* argv[])
 	// Compile the program to .so that will get embedded into the .apk under `/lib/[arch]/PROJECT_SO_NAME'
 	{
 		CliArgs args = EMPTY;
-		AddArgNt(&args, CLI_QUOTED_ARG, "[ROOT]/src/main.c");
+		AddArgNt(&args, CLI_QUOTED_ARG, "[ROOT]/src/app_main.c");
+		AddArgNt(&args, CLI_QUOTED_ARG, "[ROOT]/build/gen/main2d_shader.glsl.c");
 		// for (u64 archIndex = 1; archIndex < AndroidTargetArchitecture_Count; archIndex++)
 		// {
 		// 	AndroidTargetArchitecture architecture = (AndroidTargetArchitecture)archIndex;
