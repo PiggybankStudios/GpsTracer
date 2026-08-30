@@ -61,6 +61,7 @@ v2 ScreenSize = V2_Zero_Const;
 // +--------------------------------------------------------------+
 #include "app_resources.c"
 #include "app_input.c"
+#include "app_helpers.c"
 
 // +--------------------------------------------------------------+
 // |                App Initialization and Cleanup                |
@@ -73,6 +74,9 @@ void AppInit(void)
 	OsSetThreadName(nullptr, StrLit("MainThread"));
 	
 	InitScratchArenasVirtual(SCRATCH_ARENAS_SIZE);
+	ScratchBegin(scratch);
+	ScratchBegin1(scratch2, scratch);
+	ScratchBegin2(scratch3, scratch, scratch2);
 	
 	WriteLine_O("+==============================+");
 	WriteLine_O("|          " PROJECT_READABLE_NAME_STR "          |");
@@ -115,7 +119,12 @@ void AppInit(void)
 	
 	InitCompiledShader(&app->mainShader, stdHeap, main2d);
 	
+	AppLoadFonts();
+	
 	OsMarkStartTime();
+	ScratchEnd(scratch3);
+	ScratchEnd(scratch2);
+	ScratchEnd(scratch);
 	app->appInitFinished = true;
 	TracyCZoneEnd(Zone_Func);
 }
@@ -138,6 +147,9 @@ void AppCleanup(void)
 bool AppUpdate(void)
 {
 	TracyCZoneN(Zone_Func, "AppUpdate", true);
+	ScratchBegin(scratch);
+	ScratchBegin1(scratch2, scratch);
+	ScratchBegin2(scratch3, scratch, scratch2);
 	
 	TracyCZoneN(Zone_Update, "Update", true);
 	{
@@ -157,6 +169,8 @@ bool AppUpdate(void)
 			ScreenSizei = appIn->screenSizei;
 			ScreenSize = appIn->screenSize;
 		}
+		
+		FontNewFrame(&app->uiFont, ProgramTime);
 	}
 	TracyCZoneEnd(Zone_Update);
 	
@@ -176,9 +190,13 @@ bool AppUpdate(void)
 		SetProjectionMat(projMat);
 		SetViewMat(Mat4_Identity);
 		
-		// TracyCZoneN(Zone_FontTextureUpdates, "FontTextureUpdates", true);
-		// CommitAllFontTextureUpdates(&app->uiFont);
-		// TracyCZoneEnd(Zone_FontTextureUpdates);
+		BindFontAtSize(&app->uiFont, UI_FONT_LARGE_SIZE);
+		Str8 testStr = ScratchPrintStr("sapp_dpi_scale() = %g", sapp_dpi_scale());
+		DrawText(testStr, ShrinkV2(ScreenSize, 2), MonokaiWhite);
+		
+		TracyCZoneN(Zone_FontTextureUpdates, "FontTextureUpdates", true);
+		CommitAllFontTextureUpdates(&app->uiFont);
+		TracyCZoneEnd(Zone_FontTextureUpdates);
 		
 		TracyCZoneN(Zone_EndFrame, "EndFrame", true);
 		EndFrame();
@@ -186,6 +204,9 @@ bool AppUpdate(void)
 	}
 	TracyCZoneEnd(Zone_Render);
 	
+	ScratchEnd(scratch3);
+	ScratchEnd(scratch2);
+	ScratchEnd(scratch);
 	TracyCZoneEnd(Zone_Func);
 	return true; //TODO: If we ever conditionally render based on new input then we can pass false here when we didn't render
 }
@@ -248,9 +269,9 @@ sapp_desc sokol_main(int argc, char* argv[])
 	appDesc.event_cb   = AppHandleEvent;
 	// appDesc.width = 640; //TODO: I don't think these matter on Android?
 	// appDesc.height = 480; //TODO: I don't think these matter on Android?
-	appDesc.sample_count = 2; //MSAA sample count, TODO: Does this work on Android?
-	appDesc.swap_interval = 1; //TODO: 16ms aka 60fps? Is this ignored on Android?
-	appDesc.high_dpi = true; //TODO: Does this matter on Android?
+	appDesc.sample_count = APP_MSAA_SAMPLE_COUNT;
+	appDesc.swap_interval = APP_SWAP_INTERVAL;
+	appDesc.high_dpi = IS_APP_HIGH_DPI_AWARE; //TODO: Does this matter on Android?
 	appDesc.fullscreen = true;
 	appDesc.alpha = false;
 	appDesc.window_title = PROJECT_READABLE_NAME_STR;

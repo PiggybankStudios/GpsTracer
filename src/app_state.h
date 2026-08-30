@@ -31,6 +31,7 @@ struct AppState
 	AppInput* upcomingAppInput;
 	
 	Shader mainShader;
+	Font uiFont;
 	
 };
 

@@ -33,6 +33,18 @@ void RefreshAppInput(AppInput* appInput)
 	IncrementU64(appInput->frameIndex);
 }
 
+void UpdateScreenSizeInAppInput(AppInput* appInput, v2i newScreenSizei)
+{
+	if (!AreEqualV2i(appInput->screenSizei, newScreenSizei))
+	{
+		appInput->screenSizei = newScreenSizei;
+		appInput->screenSize = ToV2Fromi(appInput->screenSizei);
+		appInput->screenReci = MakeReciV(V2i_Zero, appInput->screenSizei);
+		appInput->screenRec = MakeRecV(V2_Zero, appInput->screenSize);
+		appInput->screenSizeChanged = true;
+	}
+}
+
 //NOTE: frameIndex is incremented in RefreshAppInput
 void PrepareAppInputForFrame(AppInput* appInput)
 {
@@ -55,18 +67,9 @@ void PrepareAppInputForFrame(AppInput* appInput)
 	appInput->timeScaleR64 = appInput->elapsedMsR64 / (1000.0 / TIME_SCALE_TARGET_FRAMERATE);
 	if (AreSimilarR64(appInput->timeScaleR64, 1.0, TIME_SCALE_ROUND_TOLERANCE)) { appInput->timeScaleR64 = 1.0; }
 	appInput->timeScale = (r32)appInput->timeScaleR64;
-}
-
-void UpdateScreenSizeInAppInput(AppInput* appInput, v2i newScreenSizei)
-{
-	if (!AreEqualV2i(appInput->screenSizei, newScreenSizei))
-	{
-		appInput->screenSizei = newScreenSizei;
-		appInput->screenSize = ToV2Fromi(appInput->screenSizei);
-		appInput->screenReci = MakeReciV(V2i_Zero, appInput->screenSizei);
-		appInput->screenRec = MakeRecV(V2_Zero, appInput->screenSize);
-		appInput->screenSizeChanged = true;
-	}
+	
+	v2i newScreenSizei = MakeV2i((i32)sapp_width(), (i32)sapp_height());
+	UpdateScreenSizeInAppInput(appInput, newScreenSizei);
 }
 
 void HandleSokolAppInputEvent(const sapp_event* event)

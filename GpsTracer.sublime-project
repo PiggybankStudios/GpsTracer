@@ -10,7 +10,7 @@
 		},
 		{
 			"name": "PigCore",
-			"path": "core/src",
+			"path": "./core/src",
 			"folder_exclude_patterns": [
 				"wasm",
 				"tests",
