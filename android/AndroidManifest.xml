@@ -24,7 +24,7 @@
 		android:allowBackup="true"
 		android:icon="@mipmap/ic_launcher"
 		android:label="GPS Tracer"
-		android:supportsRtl="true" >
+		android:supportsRtl="true" > <!-- android:label should match PROJECT_READABLE_NAME -->
 		
 		<!-- android:theme="@style/Theme.Sputnik" -->
 		<!-- android:screenOrientation="landscape" android:configChanges="orientation" -->
@@ -34,7 +34,7 @@
 			android:theme="@android:style/Theme.NoTitleBar"
 			android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" >
 			
-			<meta-data android:name="android.app.lib_name" android:value="tests"/>
+			<meta-data android:name="android.app.lib_name" android:value="app"/> <!-- This looks for libapp.so, should match PROJECT_SO_NAME in build_config.h -->
 			
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />

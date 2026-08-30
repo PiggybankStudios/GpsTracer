@@ -15,8 +15,10 @@ Description:
 #ifndef _BUILD_CONFIG_H
 #define /*DONT SHOW IN CSWITCH*/ _BUILD_CONFIG_H
 
+//NOTE: You have to change this in the AndroidManifest.xml as well
 #define PROJECT_READABLE_NAME GPS Tracer
 #define PROJECT_FOLDER_NAME   gps_tracer
+//NOTE: You have to change this in the AndroidManifest.xml as well
 #define PROJECT_SO_NAME       libapp.so
 #define PROJECT_APK_NAME      GpsTracer
 
@@ -33,7 +35,7 @@ Description:
 #define BUILD_FAT_APK 0
 
 // Runs the sokol-shdc.exe on all .glsl files in the source directory to produce .glsl.h and .glsl.c files and then compiles the .glsl.c files to .obj
-#define BUILD_SHADERS                0
+#define REBUILD_SHADERS              0
 // This puts all the contents of _data/resources into a zip file and converts the contents of that zip into resources_zip.c (and resources_zip.h in app/)
 #define ZIP_RESOURCES_FOR_EMBEDDING  0
 // The .exe will use the resources_zip.h/c file instead of loading resources from disk
@@ -72,8 +74,10 @@ Description:
 // +--------------------------------------------------------------+
 // |                       Android Related                        |
 // +--------------------------------------------------------------+
-#define ANDROID_SIGNING_KEY_PATH     /Users/robbitay/my/misc/android_keystore.jks
-#define ANDROID_SIGNING_PASS_PATH    /Users/robbitay/my/misc/android_keystore_password.txt
+// #define ANDROID_SIGNING_KEY_PATH     /Users/robbitay/my/misc/android_keystore.jks
+// #define ANDROID_SIGNING_PASS_PATH    /Users/robbitay/my/misc/android_keystore_password.txt
+#define ANDROID_SIGNING_KEY_PATH     F:/android_keystore.jks
+#define ANDROID_SIGNING_PASS_PATH    Q:/android_keystore_password.txt
 
 //folder name inside %ANDROID_SDK%/ndk/
 #define ANDROID_NDK_VERSION          29.0.13599879

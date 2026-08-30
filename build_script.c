@@ -21,6 +21,266 @@ Description:
 
 //TODO: Make something to replace https://romannurik.github.io/AndroidAssetStudio/
 
+typedef enum ShaderTargetPlatform ShaderTargetPlatform;
+enum ShaderTargetPlatform
+{
+	ShaderTargetPlatform_None = 0x00,
+	ShaderTargetPlatform_ThisPlatform  = 0x01,
+	ShaderTargetPlatform_LinuxViaWsl   = 0x02,
+	ShaderTargetPlatform_Android       = 0x04,
+	ShaderTargetPlatform_Web           = 0x08,
+	ShaderTargetPlatform_WebEmscripten = 0x10,
+	ShaderTargetPlatform_Orca          = 0x20,
+};
+
+typedef struct ShaderInfo ShaderInfo;
+struct ShaderInfo
+{
+	Str name;
+	Str glslPath;
+	Str headerPath;
+	Str sourcePath;
+	Str objPath;
+	Str linuxObjPath;
+	Str androidObjPaths[AndroidTargetArchitecture_Count];
+	Str webObjPath;
+	Str webEmscriptenObjPath;
+	Str orcaObjPath;
+};
+TYPED_ARRAY(Array_ShaderInfo, ShaderInfo, infos);
+
+Array_ShaderInfo CrossCompileShadersInFolderWithShdc(Str pigCoreFolder, Str targetDir, Str generatedCodeDir, u8 targetPlatforms, bool forceRebuild, StrArray* compileTags, const CliArgs* compilerArgs, CliArgs* linkerArgs)
+{
+	Array_ShaderInfo result = EMPTY;
+	bool buildForThisPlatform        = IsFlagSet(targetPlatforms, ShaderTargetPlatform_ThisPlatform);
+	bool crossCompileForLinuxWithWsl = (BUILDING_ON_WINDOWS && IsFlagSet(targetPlatforms, ShaderTargetPlatform_LinuxViaWsl));
+	bool buildForAndroid             = IsFlagSet(targetPlatforms, ShaderTargetPlatform_Android);
+	bool buildForWeb                 = IsFlagSet(targetPlatforms, ShaderTargetPlatform_Web);
+	bool buildForWebEmscripten       = IsFlagSet(targetPlatforms, ShaderTargetPlatform_WebEmscripten);
+	bool buildForOrca                = IsFlagSet(targetPlatforms, ShaderTargetPlatform_Orca);
+	
+	Str generatedCodeDirResolved = ResolveRootTo(generatedCodeDir, StrLit(".."));
+	MyCreateFolder(generatedCodeDirResolved, true);
+	
+	FileIter fileIter = StartFileIter(ResolveRootTo(targetDir, StrLit("..")));
+	Str iterPath = EMPTY;
+	bool iterIsFolder = false;
+	while (StepFileIter(&fileIter, &iterPath, &iterIsFolder))
+	{
+		if (!iterIsFolder && StrAnyCaseEquals(GetFileExtPart(iterPath, false), StrLit(".glsl")))
+		{
+			ShaderInfo* newShader = AddItemArray_ShaderInfo(&result);
+			memset(newShader, 0x00, sizeof(ShaderInfo));
+			newShader->glslPath = CopyStr(iterPath);
+			FixPathSlashes(newShader->glslPath, '/');
+			Str headerName = JoinStrings2(GetFileNamePart(newShader->glslPath, true), StrLit(".h"));
+			Str objName = JoinStrings2(GetFileNamePart(newShader->glslPath, false), StrLit(OBJ_EXT));
+			newShader->name = GetFileNamePart(newShader->glslPath, false);
+			if (StrAnyCaseEndsWith(newShader->name, StrLit("shader"))) { newShader->name.length -= StrLit("shader").length; }
+			if (StrExactEndsWith(newShader->name, StrLit("_"))) { newShader->name.length -= StrLit("_").length; }
+			newShader->headerPath = JoinPaths(generatedCodeDir, headerName);
+			newShader->sourcePath = ChangePathExtension(newShader->headerPath, StrLit(".c"), false);
+			if (buildForThisPlatform) { newShader->objPath = JoinPaths(StrLit("[ROOT]/build/"), objName); }
+			if (crossCompileForLinuxWithWsl) { newShader->linuxObjPath = JoinPaths(StrLit("[ROOT]/build/linux"), objName); }
+			if (buildForAndroid)
+			{
+				for (u8 archIndex = 1; archIndex < AndroidTargetArchitecture_Count; archIndex++)
+				{
+					AndroidTargetArchitecture architecture = (AndroidTargetArchitecture)archIndex;
+					Str archFolderName = MakeStrNt(GetAndroidTargetArchitectureFolderName(architecture));
+					//TODO: Maybe we should have an option to not put android artifacts in android sub-folder. For projects that only build for Mobile this is annoying
+					newShader->androidObjPaths[archIndex] = JoinPaths3(StrLit("[ROOT]/build/android/lib/"), archFolderName, objName);
+				}
+			}
+			//TODO: Add support for buildForWeb
+			//TODO: Add support for buildForWebEmscripten
+			//TODO: Add support for buildForOrca
+		}
+	}
+	
+	for (u64 sIndex = 0; sIndex < result.length; sIndex++)
+	{
+		ShaderInfo* shaderInfo = &result.infos[sIndex];
+		// PrintLine("Looking at \"%.*s\" -> \"%.*s\" \"%.*s\"", StrPrint(shaderInfo->glslPath), StrPrint(shaderInfo->headerPath), StrPrint(shaderInfo->sourcePath));
+		
+		// +==============================+
+		// |       Generate .h File       |
+		// +==============================+
+		if (forceRebuild || !DoesFileExist(ResolveRootTo(shaderInfo->headerPath, StrLit(".."))))
+		{
+			PrintLine("Cross-Compiling %.*s to %.*s...", StrPrint(shaderInfo->glslPath), StrPrint(shaderInfo->headerPath));
+			
+			StrArray targetLanguages = EMPTY;
+			AddStrLit(&targetLanguages, "glsl430");
+			AddStrLit(&targetLanguages, "glsl310es");
+			if (BUILDING_ON_WINDOWS) { AddStrLit(&targetLanguages, "hlsl5"); }
+			if (BUILDING_ON_OSX) { AddStrLit(&targetLanguages, "metal_macos"); }
+			Str targetLanguagesStr = JoinStrArray(&targetLanguages, StrLit(":"), false);
+			
+			CliArgs cmd = EMPTY;
+			AddArgNt(&cmd, SHDC_FORMAT, "sokol_impl");
+			AddArgNt(&cmd, SHDC_ERROR_FORMAT, "msvc");
+			// AddArg(&cmd, SHDC_REFLECTION);
+			AddArgStr(&cmd, SHDC_SHADER_LANGUAGES, targetLanguagesStr);
+			AddArgStr(&cmd, SHDC_INPUT, shaderInfo->glslPath);
+			AddArgStr(&cmd, SHDC_OUTPUT, shaderInfo->headerPath);
+			
+			Str shdcExe = JoinPaths(ResolveRootTo(pigCoreFolder, StrLit("..")), StrLit(EXE_SHDC));
+			FixPathSlashes(shdcExe, PATH_SEP_CHAR);
+			RunCliProgramAndExitOnFailure(shdcExe, &cmd, FormatStr(EXE_SHDC_NAME " failed to generate C header for %.*s with target languages %.*s!", StrPrint(shaderInfo->glslPath), StrPrint(targetLanguagesStr)));
+			AssertFileExist(ResolveRootTo(shaderInfo->headerPath, StrLit("..")), true);
+			
+			ScrapeShaderHeaderFileAndAddExtraInfo(ResolveRootTo(shaderInfo->headerPath, StrLit("..")), ResolveRootTo(shaderInfo->glslPath, StrLit("..")));
+		}
+		
+		// +==============================+
+		// |       Generate .c File       |
+		// +==============================+
+		if (forceRebuild || !DoesFileExist(ResolveRootTo(shaderInfo->sourcePath, StrLit(".."))))
+		{
+			PrintLine("Creating %.*s...", StrPrint(shaderInfo->sourcePath));
+			
+			Str headerFileName = GetFileNamePart(shaderInfo->headerPath, true);
+			Str sourceFileContents = FormatStr(
+				"\n"
+				"#include \"shader_include.h\"\n"
+				"\n"
+				"#include \"%.*s\"\n",
+				StrPrint(headerFileName)
+			);
+			CreateAndWriteFile(ResolveRootTo(shaderInfo->sourcePath, StrLit("..")), sourceFileContents, true);
+		}
+		
+		// +==============================+
+		// | Compile .c files to .obj/.o  |
+		// +==============================+
+		if (buildForThisPlatform && (forceRebuild || !DoesFileExist(ResolveRootTo(shaderInfo->objPath, StrLit("..")))))
+		{
+			PrintLine("Building %.*s for %s...", StrPrint(shaderInfo->glslPath), BUILDING_ON_NAME);
+			//TODO: Implement me!
+			
+			if (BUILDING_ON_WINDOWS)
+			{
+				CliArgs cmd = EMPTY;
+				AddArg(&cmd, CL_COMPILE);
+				AddArgStr(&cmd, CLI_QUOTED_ARG, shaderInfo->sourcePath);
+				AddArgStr(&cmd, CL_OBJ_FILE, shaderInfo->objPath);
+				AddIncludeDirArgStr(&cmd, GetDirectoryPart(shaderInfo->sourcePath, true));
+				if (compilerArgs != nullptr) { AddArgList(&cmd, compilerArgs); }
+				
+				StrArray tags = EMPTY;
+				if (compileTags != nullptr) { AddStrArray(&tags, compileTags); }
+				AddTag(&tags, T_MSVC_CL);
+				AddTag(&tags, T_WINDOWS);
+				AddTag(&tags, T_LANG_C);
+				AddTag(&tags, T_OBJECT);
+				
+				RunCliProgramAndExitOnFailureTags(StrLit(EXE_MSVC_CL), tags, &cmd, FormatStr("Failed to build %.*s for Windows!", StrPrint(shaderInfo->sourcePath)));
+				AssertFileExist(ResolveRootTo(shaderInfo->objPath, StrLit("..")), true);
+			}
+			if (BUILDING_ON_LINUX)
+			{
+				AssertMsg(false, "Unimplemented"); //TODO: Implement me!
+			}
+			if (BUILDING_ON_OSX)
+			{
+				AssertMsg(false, "Unimplemented"); //TODO: Implement me!
+			}
+		}
+		if (crossCompileForLinuxWithWsl && (forceRebuild || !DoesFileExist(ResolveRootTo(shaderInfo->linuxObjPath, StrLit("..")))))
+		{
+			PrintLine("Building %.*s for Linux via WSL...", StrPrint(shaderInfo->glslPath));
+			AssertMsg(false, "Unimplemented"); //TODO: Implement me!
+		}
+		if (buildForAndroid && (forceRebuild || !DoesFileExist(ResolveRootTo(shaderInfo->androidObjPaths[AndroidTargetArchitecture_Arm8], StrLit("..")))))
+		{
+			PrintLine("Building %.*s for Android...", StrPrint(shaderInfo->glslPath));
+			
+			for (u64 archIndex = 1; archIndex < AndroidTargetArchitecture_Count; archIndex++)
+			{
+				AndroidTargetArchitecture architecture = (AndroidTargetArchitecture)archIndex;
+				Str archFolderName = MakeStrNt(GetAndroidTargetArchitectureFolderName(architecture));
+				
+				Str objPath = shaderInfo->androidObjPaths[archIndex];
+				Str objDir = ResolveRootTo(GetDirectoryPart(objPath, false), StrLit(".."));
+				Str oldWorkingDir = GetFullPath(StrLit("."), '/');
+				MyCreateFolder(objDir, true);
+				chdir(objDir.chars);
+				
+				CliArgs cmd = EMPTY;
+				cmd.pathSepChar = '/';
+				cmd.rootDirPath = StrLit("../../../..");
+				AddArg(&cmd, CLANG_COMPILE);
+				AddArgStr(&cmd, CLI_QUOTED_ARG, shaderInfo->sourcePath);
+				AddArgStr(&cmd, CLANG_OUTPUT_FILE, objPath);
+				AddIncludeDirArgStr(&cmd, GetDirectoryPart(shaderInfo->sourcePath, true));
+				AddArgNt(&cmd, CLANG_TARGET_ARCHITECTURE, GetAndroidTargetArchitectureTargetStr(architecture));
+				if (compilerArgs != nullptr) { AddArgList(&cmd, compilerArgs); }
+				
+				StrArray tags = EMPTY;
+				if (compileTags != nullptr) { AddStrArray(&tags, compileTags); }
+				AddTag(&tags, T_CLANG);
+				AddTag(&tags, T_ANDROID);
+				AddTag(&tags, T_LANG_C);
+				AddTag(&tags, T_OBJECT);
+				AddStrNt(&tags, GetAndroidTargetArchitectureTag(architecture));
+				
+				RunCliProgramAndExitOnFailureTags(StrLit(EXE_CLANG), tags, &cmd, FormatStr("Failed to build %.*s for Android (arch=%s)", StrPrint(objPath), GetAndroidTargetArchitectureStr(architecture)));
+				AssertFileExist(ResolveRootTo(objPath, StrLit("../../../..")), true);
+				
+				chdir(oldWorkingDir.chars);
+			}
+		}
+		if (buildForWeb && (forceRebuild || !DoesFileExist(ResolveRootTo(shaderInfo->webObjPath, StrLit("..")))))
+		{
+			PrintLine("Building %.*s for Web...", StrPrint(shaderInfo->glslPath));
+			AssertMsg(false, "Unimplemented"); //TODO: Implement me!
+		}
+		if (buildForWebEmscripten && (forceRebuild || !DoesFileExist(ResolveRootTo(shaderInfo->webEmscriptenObjPath, StrLit("..")))))
+		{
+			PrintLine("Building %.*s for Web (Emscripten)...", StrPrint(shaderInfo->glslPath));
+			AssertMsg(false, "Unimplemented"); //TODO: Implement me!
+		}
+		if (buildForOrca && (forceRebuild || !DoesFileExist(ResolveRootTo(shaderInfo->orcaObjPath, StrLit("..")))))
+		{
+			PrintLine("Building %.*s for Orca...", StrPrint(shaderInfo->glslPath));
+			AssertMsg(false, "Unimplemented"); //TODO: Implement me!
+		}
+		
+		// +======================================+
+		// | Add Objects to linkerArgs with Tags  |
+		// +======================================+
+		if (DoesFileExist(ResolveRootTo(shaderInfo->objPath, StrLit(".."))) && buildForThisPlatform)
+		{
+			AddTaggedArgStr(linkerArgs, T_SHADER_OBJS, CLI_QUOTED_ARG, shaderInfo->objPath);
+		}
+		if (DoesFileExist(ResolveRootTo(shaderInfo->linuxObjPath, StrLit(".."))) && crossCompileForLinuxWithWsl)
+		{
+			AddTaggedArgStr(linkerArgs, T_SHADER_OBJS T_LINUX, CLI_QUOTED_ARG, shaderInfo->linuxObjPath);
+		}
+		if (buildForAndroid)
+		{
+			for (u8 archIndex = 1; archIndex < AndroidTargetArchitecture_Count; archIndex++)
+			{
+				AndroidTargetArchitecture architecture = (AndroidTargetArchitecture)archIndex;
+				if (DoesFileExist(ResolveRootTo(shaderInfo->androidObjPaths[archIndex], StrLit(".."))))
+				{
+					StrArray tags = EMPTY;
+					AddTag(&tags, T_SHADER_OBJS);
+					AddTag(&tags, T_ANDROID);
+					AddTag(&tags, GetAndroidTargetArchitectureTag(architecture));
+					AddTaggedArgStr(linkerArgs, JoinStrArray(&tags, StrLit("|"), false).chars, CLI_QUOTED_ARG, shaderInfo->androidObjPaths[archIndex]);
+				}
+			}
+		}
+		//TODO: Add support for buildForWeb
+		//TODO: Add support for buildForWebEmscripten
+		//TODO: Add support for buildForOrca
+	}
+	
+	return result;
+}
+
 int main(int argc, char* argv[])
 {
 	PigBuildDebugMode = false;
@@ -64,7 +324,7 @@ int main(int argc, char* argv[])
 	LOAD_CONFIG(BUILD_FOR_DEVICE);
 	LOAD_CONFIG(BUILD_FOR_SIMULATOR);
 	LOAD_CONFIG(BUILD_FAT_APK);
-	LOAD_CONFIG(BUILD_SHADERS);
+	LOAD_CONFIG(REBUILD_SHADERS);
 	LOAD_CONFIG(ZIP_RESOURCES_FOR_EMBEDDING);
 	LOAD_CONFIG(USE_EMBEDDED_RESOURCES_ZIP);
 	LOAD_CONFIG(INSTALL_APK);
@@ -111,12 +371,14 @@ int main(int argc, char* argv[])
 	CliArgs thingsToLink = EMPTY;
 	//TODO: This should get filled with things like shader.o, tracy.a, imgui.a, etc.
 	
+	MyCreateFolder(StrLit("gen"), false);
+	
 	// +--------------------------------------------------------------+
 	// |                        Zip Resources                         |
 	// +--------------------------------------------------------------+
 	if (ZIP_RESOURCES_FOR_EMBEDDING)
 	{
-		MyCreateFolder(StrLit("gen"), false);
+		
 		BundleResourcesZip(
 			StrLit("../resources"),
 			StrLit("app_resources.zip"),
@@ -127,13 +389,26 @@ int main(int argc, char* argv[])
 	}
 	
 	// +--------------------------------------------------------------+
+	// |                       Compile Shaders                        |
+	// +--------------------------------------------------------------+
+	Array_ShaderInfo shaders = CrossCompileShadersInFolderWithShdc(
+		StrLit("[ROOT]/core"),
+		StrLit("[ROOT]/src"),
+		StrLit("[ROOT]/build/gen"),
+		ShaderTargetPlatform_Android,
+		REBUILD_SHADERS,
+		&buildConfigTags,
+		&commonCompilerArgs,
+		&commonLinkerArgs //shader objects are added to linker args here
+	);
+	
+	// +--------------------------------------------------------------+
 	// |                        Compile to .so                        |
 	// +--------------------------------------------------------------+
 	// Compile the program to .so that will get embedded into the .apk under `/lib/[arch]/PROJECT_SO_NAME'
 	{
 		CliArgs args = EMPTY;
 		AddArgNt(&args, CLI_QUOTED_ARG, "[ROOT]/src/app_main.c");
-		AddArgNt(&args, CLI_QUOTED_ARG, "[ROOT]/build/gen/main2d_shader.glsl.c");
 		// for (u64 archIndex = 1; archIndex < AndroidTargetArchitecture_Count; archIndex++)
 		// {
 		// 	AndroidTargetArchitecture architecture = (AndroidTargetArchitecture)archIndex;
@@ -148,6 +423,7 @@ int main(int argc, char* argv[])
 		
 		StrArray tags = EMPTY;
 		AddTag(&tags, T_LANG_C);
+		AddTag(&tags, T_SHADER_OBJS);
 		AddStrArray(&tags, &buildConfigTags);
 		
 		Str compileOutputFilename = (DUMP_PREPROCESSOR ? StrLit("main_PREPROCESSED.c") : PROJECT_SO_NAME);
