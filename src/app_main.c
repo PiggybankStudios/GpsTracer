@@ -92,6 +92,11 @@ void AppInit(void)
 	#elif COMPILER_IS_GCC
 	WriteLine_N("Compiled by GCC");
 	#endif
+	#if BUILD_WITH_FREETYPE
+	WriteLine_N("We are using FreeType2 to rasterize fonts!");
+	#else
+	WriteLine_N("We are using stb_truetype.h to rasterize fonts!");
+	#endif
 	
 	sg_desc gfxDesc = ZEROED;
 	// gfxDesc.buffer_pool_size = ?; //int
@@ -205,12 +210,22 @@ bool AppUpdate(void)
 		SetProjectionMat(projMat);
 		SetViewMat(Mat4_Identity);
 		
-		BindFontAtSize(&app->uiFont, UI_FONT_LARGE_SIZE);
 		i32 screenDpi = 0;
 		r32 dpiScale = GetScreenDpiScale(&screenDpi);
 		r32 fontScale = GetAndroidFontScale();
-		Str8 testStr = ScratchPrintStr("sapp_dpi_scale() = %g - dpiScale = %gx (%ddpi) - fontScale = %gx", sapp_dpi_scale(), dpiScale, screenDpi, fontScale);
-		DrawText(testStr, ShrinkV2(ScreenSize, 4), MonokaiWhite);
+		BindFontAtSize(&app->uiFont, UI_FONT_LARGE_SIZE * dpiScale * fontScale);
+		Str8 testStr = ScratchPrintStr("sapp_dpi_scale() = %g [size=%g][color=%08X]dpiScale = \b[color]%gx[color=%08X]\b (%ddpi) - fontScale = \b[color]%gx[color=%08X]\b",
+			sapp_dpi_scale(),
+			UI_FONT_SMALL_SIZE*dpiScale*fontScale,
+			MonokaiGray1_Value,
+			dpiScale,
+			MonokaiGray1_Value,
+			screenDpi,
+			fontScale,
+			MonokaiGray1_Value
+		);
+		RichStr testRichStr = DecodeStrToRichStr(scratch, testStr);
+		DrawRichText(testRichStr, ShrinkV2(ScreenSize, 4), MonokaiWhite);
 		
 		DrawRectangle(MakeRec(0, 0, ScreenSize.width, app->screenMargins.top),          ColorWithAlpha(MonokaiBlue, 0.25f));
 		DrawRectangle(MakeRec(0, 0, ScreenSize.width, app->screenCutoutsMargins.top),   ColorWithAlpha(MonokaiRed,  0.25f));

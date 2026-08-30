@@ -34,16 +34,16 @@ void AppLoadFonts()
 	};
 	FontCharRange charRanges[] = {
 		FontCharRange_ASCII,
-		FontCharRange_LatinSupplementAccent,
-		FontCharRange_LatinExtA,
+		// FontCharRange_LatinSupplementAccent,
+		// FontCharRange_LatinExtA,
 		// FontCharRange_Cyrillic,
 		// FontCharRange_Hiragana, FontCharRange_Katakana,
 	};
 	Result bakeResult = TryAttachAndMultiBakeFontAtlases(
 		&app->uiFont,
 		ArrayCount(fontBakes), &fontBakes[0],
-		/*minAtlasSize*/128, /*maxAtlasSize*/1024,
+		/*minAtlasSize*/128, /*maxAtlasSize*/2048,
 		ArrayCount(charRanges), &charRanges[0]
 	);
-	AssertFmt(bakeResult == Result_Success, "Failed to create uiFont (loading system font \"%.*s\")! Error=%s", StrPrint(uiFontName), GetResultStr(bakeResult));
+	AssertFmt(bakeResult == Result_Success || bakeResult == Result_Partial, "Failed to create uiFont (loading system font \"%.*s\")! Error=%s", StrPrint(uiFontName), GetResultStr(bakeResult));
 }

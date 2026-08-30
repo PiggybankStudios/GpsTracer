@@ -64,7 +64,7 @@ Description:
 // Enables tests.exe and pig_core.dll being linked with imgui.obj
 #define BUILD_WITH_IMGUI     0
 // Enables building with the FreeType library which provides better font rasterizing support than stb_truetype.h (the default dependency)
-#define BUILD_WITH_FREETYPE  0
+#define BUILD_WITH_FREETYPE  1
 
 //This should stay enabled, it makes the ui_system_core.h file #include "pig_ui_config.h"
 #define PIG_CORE_INCLUDE_PIG_UI_CONFIG 1
