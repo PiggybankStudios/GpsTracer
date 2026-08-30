@@ -31,7 +31,11 @@ struct AppState
 	AppInput* upcomingAppInput;
 	
 	Shader mainShader;
+	r32 fontBakeScale;
 	Font uiFont;
+	
+	v4 screenMargins;
+	v4 screenCutoutsMargins; //NOTE: These insets are more conservative, if we want to make sure we are completely 
 	
 };
 

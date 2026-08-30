@@ -61,6 +61,7 @@ v2 ScreenSize = V2_Zero_Const;
 // +--------------------------------------------------------------+
 #include "app_resources.c"
 #include "app_input.c"
+#include "app_jni.c"
 #include "app_helpers.c"
 
 // +--------------------------------------------------------------+
@@ -69,6 +70,9 @@ v2 ScreenSize = V2_Zero_Const;
 void AppInit(void)
 {
 	TracyCZoneN(Zone_Func, "AppInit", true);
+	
+	AndroidNativeActivity = (ANativeActivity*)sapp_android_get_native_activity();
+	AndroidJavaVM = AndroidNativeActivity->vm;
 	
 	MainThreadId = OsGetCurrentThreadId();
 	OsSetThreadName(nullptr, StrLit("MainThread"));
@@ -171,6 +175,17 @@ bool AppUpdate(void)
 		}
 		
 		FontNewFrame(&app->uiFont, ProgramTime);
+		
+		r32 dpiScale = GetScreenDpiScale(nullptr);
+		r32 fontScale = GetAndroidFontScale();
+		if (app->fontBakeScale != dpiScale * fontScale)
+		{
+			PrintLine_D("Font scale or DPI changed. Rebaking fonts! (%g*%g = %g, was %g)", dpiScale, fontScale, dpiScale*fontScale, app->fontBakeScale);
+			AppLoadFonts();
+			Assert(app->fontBakeScale == dpiScale * fontScale);
+		}
+		
+		GetScreenSafeMargins(&app->screenMargins, &app->screenCutoutsMargins);
 	}
 	TracyCZoneEnd(Zone_Update);
 	
@@ -191,8 +206,30 @@ bool AppUpdate(void)
 		SetViewMat(Mat4_Identity);
 		
 		BindFontAtSize(&app->uiFont, UI_FONT_LARGE_SIZE);
-		Str8 testStr = ScratchPrintStr("sapp_dpi_scale() = %g", sapp_dpi_scale());
-		DrawText(testStr, ShrinkV2(ScreenSize, 2), MonokaiWhite);
+		i32 screenDpi = 0;
+		r32 dpiScale = GetScreenDpiScale(&screenDpi);
+		r32 fontScale = GetAndroidFontScale();
+		Str8 testStr = ScratchPrintStr("sapp_dpi_scale() = %g - dpiScale = %gx (%ddpi) - fontScale = %gx", sapp_dpi_scale(), dpiScale, screenDpi, fontScale);
+		DrawText(testStr, ShrinkV2(ScreenSize, 4), MonokaiWhite);
+		
+		DrawRectangle(MakeRec(0, 0, ScreenSize.width, app->screenMargins.top),          ColorWithAlpha(MonokaiBlue, 0.25f));
+		DrawRectangle(MakeRec(0, 0, ScreenSize.width, app->screenCutoutsMargins.top),   ColorWithAlpha(MonokaiRed,  0.25f));
+		DrawRectangle(MakeRec(0, 0, app->screenMargins.left,     ScreenSize.height),    ColorWithAlpha(MonokaiBlue, 0.25f));
+		DrawRectangle(MakeRec(0, 0, app->screenCutoutsMargins.left, ScreenSize.height), ColorWithAlpha(MonokaiRed,  0.25f));
+		DrawRectangle(MakeRec(0, ScreenSize.height - app->screenMargins.bottom,        ScreenSize.width, app->screenMargins.bottom),        ColorWithAlpha(MonokaiBlue, 0.25f));
+		DrawRectangle(MakeRec(0, ScreenSize.height - app->screenCutoutsMargins.bottom, ScreenSize.width, app->screenCutoutsMargins.bottom), ColorWithAlpha(MonokaiRed,  0.25f));
+		DrawRectangle(MakeRec(ScreenSize.width - app->screenMargins.right,        0, app->screenMargins.right,        ScreenSize.height),   ColorWithAlpha(MonokaiBlue, 0.25f));
+		DrawRectangle(MakeRec(ScreenSize.width - app->screenCutoutsMargins.right, 0, app->screenCutoutsMargins.right, ScreenSize.height),   ColorWithAlpha(MonokaiRed,  0.25f));
+		
+		r32 atlasDrawX = app->screenCutoutsMargins.left + 10;
+		VarArrayLoop(&app->uiFont.atlases, aIndex)
+		{
+			VarArrayLoopGet(FontAtlas, fontAtlas, &app->uiFont.atlases, aIndex);
+			rec atlasRec = MakeRec(atlasDrawX, ScreenSize.height - app->screenCutoutsMargins.bottom - 10 - fontAtlas->texture.height, fontAtlas->texture.width, fontAtlas->texture.height);
+			DrawTexturedRectangle(atlasRec, White, &fontAtlas->texture);
+			DrawRectangleOutline(atlasRec, 1.0f * dpiScale, MonokaiWhite);
+			atlasDrawX += atlasRec.width + 10;
+		}
 		
 		TracyCZoneN(Zone_FontTextureUpdates, "FontTextureUpdates", true);
 		CommitAllFontTextureUpdates(&app->uiFont);

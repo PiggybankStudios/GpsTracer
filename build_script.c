@@ -23,7 +23,7 @@ Description:
 
 int main(int argc, char* argv[])
 {
-	PigBuildDebugMode = true;
+	PigBuildDebugMode = false;
 	RecompileIfNeeded(StrArray_Empty);
 	PrintLine("[%s...]", BUILD_SCRIPT_EXE_NAME);
 	

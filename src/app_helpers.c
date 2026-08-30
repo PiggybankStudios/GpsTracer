@@ -9,9 +9,12 @@ Description:
 
 void AppLoadFonts()
 {
+	r32 dpiScale = GetScreenDpiScale(nullptr);
+	r32 fontScale = GetAndroidFontScale();
+	app->fontBakeScale = dpiScale * fontScale;
 	Str8 uiFontName = StrLit(UI_FONT_NAME);
-	r32 uiFontLargeSize = UI_FONT_LARGE_SIZE;
-	r32 uiFontSmallSize = UI_FONT_SMALL_SIZE;
+	r32 uiFontLargeSize = UI_FONT_LARGE_SIZE * app->fontBakeScale;
+	r32 uiFontSmallSize = UI_FONT_SMALL_SIZE * app->fontBakeScale;
 	u8 styleNone = FontStyleFlag_None;
 	u8 styleBold = FontStyleFlag_Bold;
 	u8 styleItalic = FontStyleFlag_Italic;
@@ -39,7 +42,7 @@ void AppLoadFonts()
 	Result bakeResult = TryAttachAndMultiBakeFontAtlases(
 		&app->uiFont,
 		ArrayCount(fontBakes), &fontBakes[0],
-		/*minAtlasSize*/128, /*maxAtlasSize*/512,
+		/*minAtlasSize*/128, /*maxAtlasSize*/1024,
 		ArrayCount(charRanges), &charRanges[0]
 	);
 	AssertFmt(bakeResult == Result_Success, "Failed to create uiFont (loading system font \"%.*s\")! Error=%s", StrPrint(uiFontName), GetResultStr(bakeResult));
