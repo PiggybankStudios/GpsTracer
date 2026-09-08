@@ -191,6 +191,14 @@ bool AppUpdate(void)
 		}
 		
 		GetScreenSafeMargins(&app->screenMargins, &app->screenCutoutsMargins);
+		
+		TouchLoop(tIndex)
+		{
+			TouchLoopGet(&app->currentAppInput->touchscreen, touch, tIndex)
+			{
+				if (touch->started && !touch->stopped) { PrintLine_D("Showing Android keyboard because touch[%llu]...", tIndex); sapp_show_keyboard(true); }
+			}
+		}
 	}
 	TracyCZoneEnd(Zone_Update);
 	

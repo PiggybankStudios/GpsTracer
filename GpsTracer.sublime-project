@@ -26,7 +26,25 @@
 		},
 		{
 			"name": "PigBuild",
-			"path": "../pig_build/src"
+			"path": "../pig_build/src",
 		},
 	],
+	"settings":
+	{
+		"build_options":
+		[
+		],
+		"custom_constants":
+		[
+		],
+		"custom_functions":
+		[
+		],
+		"custom_globals":
+		[
+		],
+		"custom_types":
+		[
+		]
+	},
 }
