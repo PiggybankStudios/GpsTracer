@@ -25,6 +25,10 @@ void FreeAppInputAllocations(AppInput* appInput)
 // can start getting mutated by events that would re-set these flags
 void RefreshAppInput(AppInput* appInput)
 {
+	RefreshKeyboardState(&appInput->keyboard);
+	RefreshMouseState(&appInput->mouse, sapp_mouse_locked(), MakeV2((r32)sapp_width()/2.0f, (r32)sapp_height()/2.0f));
+	RefreshTouchscreenState(&appInput->touchscreen);
+	
 	RefreshKeyboardStateHandling(&appInput->keyboard, &appInput->keyboardHandling);
 	RefreshMouseStateHandling(&appInput->mouse, &appInput->mouseHandling);
 	RefreshTouchscreenStateHandling(&appInput->touchscreen, &appInput->touchscreenHandling);

@@ -117,3 +117,21 @@ void GetScreenSafeMargins(v4* screenMarginsOut, v4* avoidCutoutsMarginsOut)
 		}
 	}
 }
+
+void ShowOrHideAndroidKeyboard(bool showKeyboard)
+{
+	JavaVMAttachBlock(env)
+	{
+		jstring serviceName = NewJStrNt(env, "input_method");
+		jobject inputMethodService = jCall_getSystemService(env, AndroidNativeActivity, serviceName);
+		if (showKeyboard)
+		{
+			jCall_toggleSoftInput(env, inputMethodService, /*SHOW_FORCED*/ 2, /*HIDE_NONE*/ 0);
+		}
+		else
+		{
+			jCall_toggleSoftInput(env, inputMethodService, /*SHOW_NONE*/ 0, /*HIDE_IMPLICIT_ONLY*/ 1);
+		}
+		(*env)->DeleteLocalRef(env, serviceName);
+	}
+}

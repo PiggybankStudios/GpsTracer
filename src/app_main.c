@@ -196,7 +196,12 @@ bool AppUpdate(void)
 		{
 			TouchLoopGet(&app->currentAppInput->touchscreen, touch, tIndex)
 			{
-				if (touch->started && !touch->stopped) { PrintLine_D("Showing Android keyboard because touch[%llu]...", tIndex); sapp_show_keyboard(true); }
+				if (touch->started)
+				{
+					PrintLine_D("Showing Android keyboard because touch[%llu]...", tIndex);
+					// sapp_show_keyboard(true);
+					ShowOrHideAndroidKeyboard(true);
+				}
 			}
 		}
 	}
@@ -222,6 +227,9 @@ bool AppUpdate(void)
 		r32 dpiScale = GetScreenDpiScale(&screenDpi);
 		r32 fontScale = GetAndroidFontScale();
 		BindFontAtSize(&app->uiFont, UI_FONT_LARGE_SIZE * dpiScale * fontScale);
+		v2 textPos = ShrinkV2(ScreenSize, 4);
+		r32 lineHeight = GetFontLineHeight(&app->uiFont, UI_FONT_LARGE_SIZE * dpiScale * fontScale, FontStyleFlag_None);
+		
 		Str8 testStr = ScratchPrintStr("sapp_dpi_scale() = %g [size=%g][color=%08X]dpiScale = \b[color]%gx[color=%08X]\b (%ddpi) - fontScale = \b[color]%gx[color=%08X]\b",
 			sapp_dpi_scale(),
 			UI_FONT_SMALL_SIZE*dpiScale*fontScale,
@@ -233,7 +241,9 @@ bool AppUpdate(void)
 			MonokaiGray1_Value
 		);
 		RichStr testRichStr = DecodeStrToRichStr(scratch, testStr);
-		DrawRichText(testRichStr, ShrinkV2(ScreenSize, 4), MonokaiWhite);
+		DrawRichText(testRichStr, textPos, MonokaiWhite); textPos.y += lineHeight;
+		
+		DrawText(PrintInArenaStr(scratch, "Touches: %llu", app->currentAppInput->touchscreen.numTouches), textPos, MonokaiWhite); textPos.y += lineHeight;
 		
 		DrawRectangle(MakeRec(0, 0, ScreenSize.width, app->screenMargins.top),          ColorWithAlpha(MonokaiBlue, 0.25f));
 		DrawRectangle(MakeRec(0, 0, ScreenSize.width, app->screenCutoutsMargins.top),   ColorWithAlpha(MonokaiRed,  0.25f));
